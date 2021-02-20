@@ -41,14 +41,14 @@ int main(void)
     nrf_print_debug(&nrf);
     while (1)
     {
-        printf("trololo\n");
+        printf("BEGIN LOOP\n");
         bme280_get_data(&bme280);
-        printf("Hurenson %ld %ld %lu\n", bme280.temperature, bme280.pressure, bme280.humidity);
+        printf("TEST %ld %ld %lu\n", bme280.temperature, bme280.pressure, bme280.humidity);
         printf("DS18B20 test: reg1 0x%02X reg2 0x%02X reg3 0x%02X tem %d\n" ,ds18b20.sensor[0].registers[0], ds18b20.sensor[0].registers[1],ds18b20.sensor[0].registers[2], ds18b20.sensor[0].temperature) ;
         printf("conf delay %d\n", CONV_DELAY);
         ds18b20_get_temp(0, &ds18b20);
         status = nrf_write_payload(&nrf,addr,5);
-        printf("Ssend was ? %d\n", status);
+        printf("send was ? %d\n", status);
         _delay_ms(5000);
        
 
