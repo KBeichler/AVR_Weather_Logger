@@ -1,0 +1,24 @@
+BMP180 test code
+
+        uint16_t temp;
+        uint8_t t;
+        uint8_t status = 0;
+  
+        status = I2Cstart();      
+        status = I2Cwrite(BMP180write);       
+        status = I2Cwrite (0xF4);       
+        status = I2Cwrite (0x2E);    
+        I2Cstop();
+        _delay_ms(5);
+
+
+        status = I2Cstart();
+        status = I2Cwrite(BMP180write);
+        status = I2Cwrite (0xF6);
+        I2Cstart();        
+        status = I2Cwrite(BMP180read);
+        t = I2CreadACK();
+        temp = t << 8;
+        t = I2CreadNOACK();         
+        temp |= t;
+        I2Cstop();
