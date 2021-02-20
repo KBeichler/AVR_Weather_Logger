@@ -1,0 +1,123 @@
+General infos
+
+
+OPERATION MODES
+    after power upo (VDD > 1,8V) it takes 10ms to start the device
+
+    power down mode
+        is entered when PWR_UP in CONFIG is LOW
+
+    standby mode I   (low power)
+        when PWR_UP in CONFIG is HIGH
+        device returns to this mode when CE is switched LOW
+    
+    standy mode II
+        when CE is held HIGH
+    
+
+        RX mode 
+        PRIM_RX set 1 + CE high
+        module receives data
+            if dta found, its placed in the RX FIFO
+        rx detect mode -> appendix E p74
+
+        TX mode
+        PRIM_RX set 0 + Payload in RX FIFO + at least 10us pulse on CE 
+        stays until finished transmission
+        if TX FIFO nit empoty, it transmits nex tpackage
+        if FIFO empty -> standby II
+        NEVER STAY IN RX MODE OVER 4MS!! 
+
+        Mode PWR_UP
+
+    register    PRIM_RX     register    CE      FIFO    state
+    RX mode     1           1           1       -
+    TX mode     1           0           1               Data in TX FIFO. Will empty all levels in TX FIFOa.
+    TX mode     1           0       minimum 10μs        Data in TX FIFO.Will empty one level in TX FIFOb
+    Standby-II  1           0           1    TX FIFO empty
+    Standby-I   1           -           0               No ongoing packet transmission
+    Power Down 0            -           -       -
+
+GENERAL CONFIG
+    AIR DATA RATE
+        is set by RF_DR in RF_SETUP
+
+    RF CHANNEL
+        RF_CH register by formula F=2400+RF_CH [MHz]
+
+    PA CONTROL (send power)
+        RF_PWR in RF_SETUP
+        bit db  power  
+        11   0   11,3ma
+        10  -6   9
+        01  -12  7,5
+        00  -18   7
+
+    LNA GAIN (power save but less sensitivity)
+    LNA_HCURR in RF_SETUP
+
+    RX/TX set
+    by PRIM_RX in CONFIÖG
+
+
+ENHANCED SHOCKBURST
+    
+    Packet structure
+    Preamble    5byte adress    Control fiel        Payload     CRC
+    0101...                     payload length PID
+
+    Static or Dynamic Paylpad length
+        static ist default
+            set in RX_PW_Px registers on receiver shifte
+            on RX side its just de bytes clocked int RX FIFO
+        
+        Dynamic length DPL
+            enables varaible lengths. the controller can read the received payload in the R_RX_PL_WID register.
+            to enable: EN_DPL in FEATURE must be set.
+                        in RX the DYNPD has to be set
+                        in TX DPL_P= in DYNPD has to be set
+        
+    Packet assembly
+        adress is taken from TX_ADDR (length of addres set with AW register)
+        NO ACK can be set?
+        RX is searchingfor packets with its adresses from RX_ADDR
+
+        afer assembly the RX_DR IRQ is toggled
+    
+    Auto Packet Handling
+        Auto ACK
+            sends ACK from RX to TX after successful rx. enabled in EN_AA
+            when DPL is active, the ACK can contain a playoad
+                mus be uploaded in W_ACK_PAYLOAD. ACK payload is pending until new rx is received
+        
+        Auto retransmit
+            retransmits if no ACK received. is set with ARC in SETUP_RETR register.
+            when ack is received, TX_IDS IRQ is toggled.
+            is done regardles if CE pin, PWR_DOWN cancles retransmit
+            Can be minotred with ARC_CNT and PLOS_CNT in OBSERVE_TX register.
+
+    Enable RX CHANNEL   
+        can receive from up tto 6 channels.
+        they are activated in EN_RXADDR (default is pipe 0 and 1)
+            adresses are set in RX_ADDR_PX
+        Pipe 0 has uniqe adresse   
+        Pipe 1-5 share 4 MSbytes
+
+INTERFACE SPECS
+    IRQ - sends out up to 3 interrupts
+    CE enables chip in TX or RX mode
+    4 MOSI LINES
+
+    SPI COMMUNICATION
+    every com hast to start by CSN to LOW
+    STATUS register will be shifted out by the module ond first command byte
+    Command Format:
+        COMMAND word + Data Bytes
+
+    SPI commands
+    
+FIFOS
+    TX three level 32byte FIFO
+    RX three level 32byte FIFO
+    every FIFO holds up packets for up to 3 Receivers
+    FIFO_STATUS register - show if full or emtpy
