@@ -119,7 +119,7 @@ void nrf_set_datarate(uint8_t datarate);
 void nrf_set_rf_power(uint8_t rf_power);
 void nrf_set_lna_gain(uint8_t lna_gain);
 void nrf_set_crc(uint8_t crc);
-void nrf_set_payload_length( uint8_t idx ,uint8_t length);
+void _nrf_set_payload_length( uint8_t idx ,uint8_t length);
 
 void _nrf_set_add_length(void);
 ///////////////////////////////////////////////////////////////////////////////

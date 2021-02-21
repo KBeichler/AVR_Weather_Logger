@@ -234,13 +234,13 @@ void nrf_radio_mode(NRF24_dev *dev, eRADIO_MODE mode){
     
 }
 
-void nrf_open_reading_channel(NRF24_dev *dev, uint8_t *address, uint8_t idx, uint8_t rx_pload_length){
+void nrf_open_reading_channel(NRF24_dev *dev, uint8_t *address, uint8_t rx_pload_length, uint8_t idx){
     dev->rx_payload_length[idx] = rx_pload_length;
 
     uint8_t reg;
     nrf_read_register(EN_RXADDR, &reg);
     nrf_write_register(EN_RXADDR, (reg | _BV(idx)));
-    nrf_set_payload_length(idx, rx_pload_length);
+    _nrf_set_payload_length(idx, rx_pload_length);
 
     //nrf_write_multi_register( (RX_ADDR_P0+idx), address, ADDR_LENGTH + 2);
     spi_beginTrx();
@@ -311,7 +311,7 @@ void nrf_set_crc(uint8_t crc){
     nrf_write_register(CONFIG, reg);
 }
 
-void nrf_set_payload_length(uint8_t idx, uint8_t length){                    
+void _nrf_set_payload_length(uint8_t idx, uint8_t length){                    
     nrf_write_register( ((RX_PW_P0)+idx ) , length);         
 }
 
