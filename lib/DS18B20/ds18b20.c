@@ -187,26 +187,26 @@ void ds18b20_get_temp( uint8_t idx, DS18B20_dev *dev){
         byte[i] = ds18b20_read_byte();        
     }
 
-    dev->sensor[idx].temperature = _conv_temp(byte, dev);
+    dev->sensor[idx].temperature = _conv_temp(byte);
 
 }
 
-void ds18b20_get_temp_manual( uint8_t idx, DS18B20_dev *dev){
+void ds18b20_get_temp_manual(DS18B20_sensor *sensor){
     //get temparature reading from single slave
 
     uint8_t byte[2];
-    _match_rom(&dev->sensor[idx]);
+    _match_rom(sensor);
     ds18b20_write_byte(RD_SCRPAD);
 
     for (int i = 0; i < 2; i++){
         byte[i] = ds18b20_read_byte();        
     }
 
-    dev->sensor[idx].temperature = _conv_temp(byte, dev);
+    sensor->temperature = _conv_temp(byte);
 
 }
 
-int16_t _conv_temp(uint8_t *raw, DS18B20_dev *dev){
+int16_t _conv_temp(uint8_t *raw){
 
     //converts read temperature into 2 variables
     // 23.45 -> uu.ll
@@ -220,7 +220,7 @@ int16_t _conv_temp(uint8_t *raw, DS18B20_dev *dev){
 
 
     //get bit 3-0 of LSB. check if one, if yes -> add 2^-i to lower digit
-    for (int i = 0; i <= dev->resolution ; i++){
+    for (int i = 0; i <= RESOLUTION ; i++){
         lower += (raw[0] & _BV(3 - i)) > 0 ? 100 >> (i+1) : 0;
     }
 

@@ -67,6 +67,7 @@ typedef struct {
     uint8_t rom_code[8];
     uint8_t registers[3];
     int16_t temperature;
+
 } DS18B20_sensor;
 
 typedef struct {
@@ -104,11 +105,11 @@ void ds18b20_set_resolution(DS18B20_sensor *sensor);
 void ds18b20_get_temp( uint8_t idx, DS18B20_dev *dev);
 
 
-void ds18b20_get_temp_manual( uint8_t idx, DS18B20_dev *dev);
+void ds18b20_get_temp_manual(DS18B20_sensor *sensor);
 //misc functions
 
 //converts temprature in readable format
-int16_t _conv_temp(uint8_t *raw, DS18B20_dev *dev);
+int16_t _conv_temp(uint8_t *raw);
 
 void ds18b20_start_temp_conv(DS18B20_sensor *sensor);
 void _wait_conv_delay();

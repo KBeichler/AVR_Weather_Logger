@@ -21,7 +21,13 @@ possible values for ref
     3 - internal 1,1v
 values for prescaler
     0 - 7 -> prescaler 2-128*/
-void adc_init(uint8_t ref);
+typedef enum eADC_REF{
+    AREF_EXTERN = 0,
+    AREF_AVCC,
+    INVALID,
+    AREF_INTERNAL
+}eADC_REF;
+void adc_init(eADC_REF);
 
 
 /* disables Digital input puffer for ADC pin

@@ -14,7 +14,7 @@ ADMUX - multiplexer
 
 #include <adc.h>
 
-void adc_init(uint8_t ref){
+void adc_init(eADC_REF ref){
     ADMUX |= (ref << 6);
     ADCSRA |= ADC_PRESCALER;
     //enable ADC
