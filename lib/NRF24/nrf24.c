@@ -8,10 +8,10 @@
 #include "nrf24_reg.h"
 #include <spi.h>
 
+
+
+
 #define DEBUG
-
-
-
 #ifdef DEBUG
 #include <logger.h>
 #include <stdio.h>
@@ -21,12 +21,11 @@
 
 
 uint8_t nrf_init(NRF24_dev *dev){
+    //init SPI if not already
     spi_init(SPI_SPEED_1);
 
     
     // *SET DEFAULT CONFIG
-    
-
     _nrf_set_add_length();
 
     nrf_set_channel (DEFAULT_CHANNEL);
@@ -34,11 +33,10 @@ uint8_t nrf_init(NRF24_dev *dev){
     nrf_set_rf_power(DEFAULT_RF_PWR);
     nrf_set_crc(DEFAULT_CRC);
     nrf_set_lna_gain(DEFAULT_LNA);
-
-
+    nrf_activate_features();
 
     
-    // *Init pins
+    // *Init CE pins
     CE_DDR |= _BV(CE_PIN);
     CE_LOW;
     
@@ -46,13 +44,13 @@ uint8_t nrf_init(NRF24_dev *dev){
     // optional - set clock polarity and sample timing for SPI
     //SPCR |= _BV(CPHA);
     //SPCR |= _BV(CPOL);
-
-    nrf_activate_features();
+    
+    // flsuh all buffer on startup
     nrf_flush_rx();
     nrf_flush_tx();
 
+    // set power and store all registeres
     nrf_power_mode(dev, STANDBY);
-
     nrf_store_registers(dev); 
 
     return 1;
@@ -63,17 +61,9 @@ uint8_t nrf_init(NRF24_dev *dev){
 uint8_t nrf_read_register(uint8_t regaddr, uint8_t * data){
 
     spi_beginTrx();
+    // mask regaddr with read register command
     uint8_t status =  spi_trade_byte(R_REGISTER | regaddr) ; 
     *data = spi_trade_byte(NOP);
-    spi_endTrx();
-    return status;
-
-}
-
-uint8_t nrf_write_register(uint8_t regaddr, uint8_t data){
-    spi_beginTrx();
-    uint8_t status =  spi_trade_byte(W_REGISTER | regaddr) ; 
-    spi_trade_byte(data);
     spi_endTrx();
     return status;
 
@@ -82,7 +72,9 @@ uint8_t nrf_write_register(uint8_t regaddr, uint8_t data){
 uint8_t nrf_read_multi_register(uint8_t regaddr, uint8_t *data, uint8_t length){
 
     spi_beginTrx();
+    // mask regaddr with read register command
     uint8_t status =  spi_trade_byte(R_REGISTER | regaddr) ; 
+    // loop through data array
     while (length--){
         *data = spi_trade_byte(NOP);
         data++;
@@ -93,10 +85,25 @@ uint8_t nrf_read_multi_register(uint8_t regaddr, uint8_t *data, uint8_t length){
 
 }
 
+uint8_t nrf_write_register(uint8_t regaddr, uint8_t data){
+
+    spi_beginTrx();
+    // mask regaddr with write register command
+    uint8_t status =  spi_trade_byte(W_REGISTER | regaddr) ; 
+    spi_trade_byte(data);
+    spi_endTrx();
+    return status;
+
+}
+
+
+
 uint8_t nrf_write_multi_register(uint8_t regaddr, uint8_t *data,  uint8_t length){
     
     spi_beginTrx();
+    // mask regaddr with write register command
     uint8_t status =  spi_trade_byte(W_REGISTER | regaddr) ; 
+    // loop through data
     while (length--){
         spi_trade_byte(*data);
         data++;
@@ -106,52 +113,47 @@ uint8_t nrf_write_multi_register(uint8_t regaddr, uint8_t *data,  uint8_t length
 
 }
 
-
-eERROR nrf_read_payload(NRF24_dev *dev, uint8_t * buffer, uint8_t len){
-
+eERROR nrf_read_payload(NRF24_dev *dev, uint8_t *data, uint8_t len){
 
     spi_beginTrx();
-
     uint8_t status = spi_trade_byte(R_RX_PAYLOAD);
     //uint8_t r;
     while (len--){
-
-        *buffer = spi_trade_byte(NOP);
-        buffer++;
-
+        *data = spi_trade_byte(NOP);
+        data++;
     }
 
-    spi_endTrx();
-    
-
+    spi_endTrx();   
     return status;
 
 }
 
 
-eERROR nrf_write_payload(NRF24_dev *dev, uint8_t * buffer, uint8_t len){
+eERROR nrf_write_payload(NRF24_dev *dev, uint8_t *data, uint8_t len){
 
     spi_beginTrx();
-
+    // setup blanks to fill TX fifo (max payload length - payload)
     uint8_t blanks = dev->tx_payload_length - len;
     spi_trade_byte(W_TX_PAYLOAD);
     //uint8_t r;
     while (len--){
-        spi_trade_byte(*buffer);
-        buffer++;
+        spi_trade_byte(*data);
+        data++;
     }
 
+    // fill TX with 0 until we reach pload_length
     while(blanks--){
         spi_trade_byte(0);
     }
 
     spi_endTrx();
 
-    spi_beginTrx();
-    
+    // check status register for interrupts
+    spi_beginTrx();    
     uint8_t status = spi_trade_byte(NOP);
     spi_endTrx();
 
+    // handle interrupt. reset IRQ and return
     if ( status & _BV(MAXIMUM_RT_IRQ) ){        
         nrf_reset_irq(status, MAXIMUM_RT_IRQ);
         return MAXIMUM_RT_IRQ;
@@ -162,22 +164,21 @@ eERROR nrf_write_payload(NRF24_dev *dev, uint8_t * buffer, uint8_t len){
 
 
 
-eERROR nrf_write_payload_noack(NRF24_dev *dev, uint8_t * buffer, uint8_t len){
+eERROR nrf_write_payload_noack(NRF24_dev *dev, uint8_t *data, uint8_t len){
 
     spi_beginTrx();
-
     uint8_t blanks = dev->tx_payload_length - len;
     spi_trade_byte(W_TX_PAYLOAD_NO_ACK);
     //uint8_t r;
     while (len--){
-        spi_trade_byte(*buffer);
-        buffer++;
+        spi_trade_byte(*data);
+        data++;
     }
 
     while(blanks--){
         spi_trade_byte(0);
     }
-
+    // we dont check the interrupt here because we do not except an ACK
     spi_endTrx();
 
     return NO_ERROR;
@@ -210,6 +211,7 @@ void nrf_power_mode(NRF24_dev *dev, ePOWER_MODE mode){
         }
 
     nrf_write_register(CONFIG, reg ); 
+    // set mode on sensor and also in device struct (easier handling)
     dev->pwr_mode = mode;
     
 }
@@ -228,10 +230,34 @@ void nrf_radio_mode(NRF24_dev *dev, eRADIO_MODE mode){
         
     nrf_write_register(CONFIG, reg);
     dev->radio_mode = mode;
+
+    // we set the radio mode and also set CE high (put sensor power in active state!)
     if (!(CE_STATE)){
         CE_HIGH;
     }
     
+}
+
+
+void nrf_open_writing_channel(NRF24_dev *dev, uint8_t *address, uint8_t tx_pload_length){
+    dev->tx_payload_length = tx_pload_length;
+
+    //nrf_write_multi_register( TX_ADDR , address, ADDR_LENGTH + 2);
+    
+
+    spi_beginTrx();
+    spi_trade_byte( (W_REGISTER | (TX_ADDR) ));
+    
+    for (uint8_t i = 0; i < (ADDR_LENGTH); i++){
+        spi_trade_byte(address[i]);
+        dev->tx_pipe[i] = address[i];
+    }
+    spi_endTrx();
+
+    // for autoACK the RX pipe0 needs to be the same as tx Pipe!
+    nrf_open_reading_channel(dev, address, 0, tx_pload_length);
+
+
 }
 
 void nrf_open_reading_channel(NRF24_dev *dev, uint8_t *address, uint8_t rx_pload_length, uint8_t idx){
@@ -245,7 +271,6 @@ void nrf_open_reading_channel(NRF24_dev *dev, uint8_t *address, uint8_t rx_pload
     //nrf_write_multi_register( (RX_ADDR_P0+idx), address, ADDR_LENGTH + 2);
     spi_beginTrx();
     spi_trade_byte( (W_REGISTER | (RX_ADDR_P0 + idx) ));
-
     for ( uint8_t i = 0; i < (ADDR_LENGTH); i++){
         spi_trade_byte(address[i]);
         dev->rx_pipe[idx][i] = address[i];
@@ -254,23 +279,6 @@ void nrf_open_reading_channel(NRF24_dev *dev, uint8_t *address, uint8_t rx_pload
 
 }
 
-void nrf_open_writing_channel(NRF24_dev *dev, uint8_t *address, uint8_t tx_pload_length){
-    dev->tx_payload_length = tx_pload_length;
-
-    //nrf_write_multi_register( TX_ADDR , address, ADDR_LENGTH + 2);
-    
-    spi_beginTrx();
-    spi_trade_byte( (W_REGISTER | (TX_ADDR) ));
-    
-    for (uint8_t i = 0; i < (ADDR_LENGTH); i++){
-        spi_trade_byte(address[i]);
-        dev->tx_pipe[i] = address[i];
-    }
-    spi_endTrx();
-    nrf_open_reading_channel(dev, address, 0, tx_pload_length);
-
-
-}
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // CONFIG FUNCTIONS
@@ -335,11 +343,9 @@ uint8_t nrf_flush_tx(){
 }
 
 
-
 uint8_t nrf_flush_rx(){
     spi_beginTrx();
     uint8_t status = spi_trade_byte(FLUSH_RX);
-
     spi_endTrx();
     return status;
 }
@@ -348,6 +354,7 @@ uint8_t nrf_flush_rx(){
 
 uint8_t nrf_activate_features(void){
     spi_beginTrx();
+    // set datasheet page 46 for mroe infp
     uint8_t status = spi_trade_byte(ACTIVATE);
     spi_trade_byte(0x73);
     spi_endTrx();
@@ -389,9 +396,7 @@ void nrf_reset_irq(uint8_t status, eERROR irq){
 void nrf_store_registers(NRF24_dev *dev){
 
     for (uint8_t i = 0; i < REGMAP_END; i++){
-
         dev->registers[STATUS] = nrf_read_register(i, &dev->registers[i]);
-
     }
 
 }
