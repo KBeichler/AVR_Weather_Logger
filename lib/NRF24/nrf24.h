@@ -32,9 +32,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // CE - PIN SETTINGS
-#define CE_PIN       7
-#define CE_DDR      DDRD
-#define CE_PORT     PORTD
+#define CE_PIN       7      //1
+#define CE_DDR      DDRD    //DDRB
+#define CE_PORT     PORTD   //PORTB
+
+
+
 #define CE_HIGH     CE_PORT |= _BV(CE_PIN)
 #define CE_LOW      CE_PORT &= ~(_BV(CE_PIN))
 #define CE_STATE    CE_PORT & (_BV(CE_PIN))

@@ -17,7 +17,9 @@ static uint8_t _search_rom(void);
 
 
 
-// init function
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// INIT FUNCTION
 uint8_t ds18b20_init(DS18B20_dev *dev){
     
     //setup the IO port for OneWire
@@ -38,8 +40,9 @@ uint8_t ds18b20_init(DS18B20_dev *dev){
     return 1;
 }
 
-
-// Onewire pulse functions
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// LOW LEVEL ONWIRE FUNCTIONS
 
 int8_t _ow_reset(){
 
@@ -113,8 +116,10 @@ int8_t _ow_read_bit(){
 
 
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// HIGH LEVEL ONWIRE FUNCTIONS
 
-// byte functions
 void ds18b20_write_byte(uint8_t cmd){
 
 
@@ -153,9 +158,52 @@ void _match_rom(DS18B20_sensor *sensor){
 
 }
 
+void _read_scratchpad(DS18B20_sensor *sensor){
+    uint8_t buffer[9];
+
+    _match_rom(sensor);
+
+    ds18b20_write_byte(RD_SCRPAD);
+
+    for (uint8_t i = 0; i < 9; i++){
+        buffer[i] = ds18b20_read_byte();
+        
+    }
+
+    sensor->registers[0] = buffer[2];
+    sensor->registers[1] = buffer[3];
+    sensor->registers[2] = buffer[4];
+}
 
 
-// Public functions
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// DS18B20  SENSOR FUNCTIONS
+
+
+uint8_t ds18b20_search_sensors(DS18B20_dev *dev){
+    lastDeviceF = 0;
+    uint8_t c = 0;
+
+    //primary search loop
+    //loops until _searchROM does not find new devices
+    //saves rom code into rom_codes array
+    while( _search_rom() ){
+    
+        for (int i = 0; i < 8 ; i++){            
+            dev->sensor[c].rom_code[i] = rom_buffer[i];;
+        }
+
+        _read_scratchpad(&dev->sensor[c]);
+
+        c++;
+    }
+    
+    return c;
+
+}
+
+
 void ds18b20_set_resolution( DS18B20_sensor *sensor){
         uint8_t res = RESOLUTION;
         _match_rom(sensor);
@@ -173,21 +221,21 @@ void ds18b20_set_resolution( DS18B20_sensor *sensor){
 }
 
 
-void ds18b20_get_temp( uint8_t idx, DS18B20_dev *dev){
+void ds18b20_get_temp( DS18B20_sensor *sensor){
     //get temparature reading from single slave
 
-    ds18b20_start_temp_conv(&dev->sensor[idx]);
+    ds18b20_start_temp_conv(sensor);
     _wait_conv_delay();
 
     uint8_t byte[2];
-    _match_rom(&dev->sensor[idx]);
+    _match_rom(sensor);
     ds18b20_write_byte(RD_SCRPAD);
 
     for (int i = 0; i < 2; i++){
         byte[i] = ds18b20_read_byte();        
     }
 
-    dev->sensor[idx].temperature = _conv_temp(byte);
+    sensor.temperature = _conv_temp(byte);
 
 }
 
@@ -205,6 +253,18 @@ void ds18b20_get_temp_manual(DS18B20_sensor *sensor){
     sensor->temperature = _conv_temp(byte);
 
 }
+
+
+void ds18b20_start_temp_conv(DS18B20_sensor *sensor){
+
+    _match_rom(sensor);
+    ds18b20_write_byte(CONVERT_T);
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// MISC FUNCTION
 
 int16_t _conv_temp(uint8_t *raw){
 
@@ -246,63 +306,30 @@ int16_t _conv_temp(uint8_t *raw){
 }
 
 
-void ds18b20_start_temp_conv(DS18B20_sensor *sensor){
-
-    _match_rom(sensor);
-    ds18b20_write_byte(CONVERT_T);
-
-}
 
 void _wait_conv_delay(){
     _delay_ms(CONV_DELAY);
 }
 
-void _read_scratchpad(DS18B20_sensor *sensor){
-    uint8_t buffer[9];
 
-    _match_rom(sensor);
-
-    ds18b20_write_byte(RD_SCRPAD);
-
-    for (uint8_t i = 0; i < 9; i++){
-        buffer[i] = ds18b20_read_byte();
-        
-    }
-
-    sensor->registers[0] = buffer[2];
-    sensor->registers[1] = buffer[3];
-    sensor->registers[2] = buffer[4];
-}
-
-/*  Search function. Returns nuber of found devices and saves ROM codes into rom_code array
-    Implementation details see 
-    https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/187.html
-*/
-
-uint8_t ds18b20_search_sensors(DS18B20_dev *dev){
-    lastDeviceF = 0;
-    uint8_t c = 0;
-
-    //primary search loop
-    //loops until _searchROM does not find new devices
-    //saves rom code into rom_codes array
-    while( _search_rom() ){
-    
-        for (int i = 0; i < 8 ; i++){            
-            dev->sensor[c].rom_code[i] = rom_buffer[i];;
-        }
-
-        _read_scratchpad(&dev->sensor[c]);
-
-        c++;
-    }
-    
-    return c;
-
-}
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// PRIVATE FUNCTIONS
 
 
-
+/**
+ * DS18B20 ROM search algorithm
+ * uses global variables to keep track of status!
+ * saves the current found ROM code into the global rom_buffer struct
+ * 
+ * 
+ * I am not sure how it works, I implemented it after a flowchart seen on the maximintegrated homepage ¯\_(ツ)_/¯
+ * uses some kind of binary tree search to find all sensors
+ * 
+ * Implementation details see 
+ *      https://www.maximintegrated.com/en/design/technical-documents/app-notes/1/187.html
+ * 
+ * */
 
 static uint8_t _search_rom(){
 

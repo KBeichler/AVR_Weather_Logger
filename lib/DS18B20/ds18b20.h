@@ -5,7 +5,10 @@ Simple implementation of the OneWire protocol for DS18B20 Sesnors from MaxinInte
 Timing of the protocoll is controlled via the AVS _delay_us function
 Correct setting clockspeed is therefore important
 
-Check these define statements. set to corrospndent IO port
+Driving the Sensor in parasite mode should be spossible, but its not tested!
+
+
+The following define statements set up the Port for the OneWire Bus
 #define WIRE_PIN    2
 #define WIRE_PORT   PORTD
 #define WIRE_DDR    DDRD
@@ -13,7 +16,8 @@ Check these define statements. set to corrospndent IO port
 */
 #include <avr/io.h>
 
-/////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // CONFIGURATION
 
 // Temperature resolution
@@ -27,6 +31,8 @@ Check these define statements. set to corrospndent IO port
 
 #define MAX_SENSOR_COUNT    8
 
+
+// Define OneWire Port and functions
 #define WIRE_PIN    2
 #define WIRE_PORT   PORTD
 #define WIRE_DDR    DDRD
@@ -38,7 +44,8 @@ Check these define statements. set to corrospndent IO port
 #define PORT_LOW  WIRE_PORT &= ~(_BV(WIRE_PIN))
 
 
-/////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // OneWire TIMINGS
 
 #define SAMPLE_TIME 10
@@ -61,6 +68,10 @@ Check these define statements. set to corrospndent IO port
 #define RD_PWR_SUP      0xB4
 
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Device and Sensor struct
+
 
 typedef struct {
     uint8_t address;
@@ -76,49 +87,162 @@ typedef struct {
     uint8_t resolution;
 } DS18B20_dev;
 
-
-//init function
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// INIT FUNCTION
+/**
+ * Searches all sensors on the OneWire bus and initilises them (set resolution)
+ * Sets the count of found devices in the device struct
+ * 
+ *
+ * @param: pointer to device struct 
+ * 
+ * @return: 1
+ * 
+*/
 uint8_t ds18b20_init(DS18B20_dev *dev);
 
 
-// Onewire pulse functions
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// LOW LEVEL ONWIRE FUNCTIONS
+/**
+ * Exectues a reset pulse (about 500us high + 500us low) 
+ * 
+ * 
+ * @return: if a sensor sends a lifebit return 1
+*/
 int8_t _ow_rest();
+
+/**
+ * Write 1 bit on the bus
+ * 
+ * @param: bit to write (0 or 1)
+ * 
+ * */
 void _ow_write_bit(uint8_t);
+
+/**
+ * read one bit from the bus
+ * 
+ * @return: returns the read bit
+ * */
 int8_t _ow_read_bit();
 
-// byte functions
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// HIGH LEVEL ONWIRE FUNCTIONS
+/**
+ * Writes one byte to the bus
+ * 
+ * @param: byte to write
+ * 
+ * */
 void    ds18b20_write_byte(uint8_t);
+
+/**
+ * read one byte from the bus
+ * 
+ * @return: returns the rad byte
+ * */
 uint8_t ds18b20_read_byte();
 
-// send match ROM command to given index.
-// all ROM codes are stored in a global array on startup
+/**
+ * send a match ROM command to the given sensor
+ * with match ROM we select a device on the bus
+ * 
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ * 
+ * */
 void _match_rom(DS18B20_sensor *sensor);
 
+/**
+ * INTERNAL: read the internal ROM from the sensor
+ * 
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ *
+ *  */
+void _read_scratchpad(DS18B20_sensor *sensor)
 
-// Public functions
-//set resolution for temperature measurement
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// DS18B20  SENSOR FUNCTIONS
+
+/**
+ * Performs the rom search algorithm. Saves all found sensor into sensor array in device struct
+ * @param: pointer to device struct
+ * 
+ * @return: returns the count of found devices
+ * 
+ * */
+uint8_t ds18b20_search_sensors(DS18B20_dev *dev);
+
+/**
+ * sets the reading resolution for given sensor
+ * RESOLTION IS FIXED IN DEFINE STATEMENT IN HEADER FILE
+ * 
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ * 
+ * */
 void ds18b20_set_resolution(DS18B20_sensor *sensor);
 
-// read temperature of sensor
-// needs the dev struct pointer and the index of the sensor
-void ds18b20_get_temp( uint8_t idx, DS18B20_dev *dev);
+/**
+ * reads temperature of given sensor, tremperature is saved into sensor struct
+ * this function waits for the temperature conversion of the sensor 
+ * takes 94 - 750ms! depending on resolution
+ * 
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ * 
+ * */
+void ds18b20_get_temp( DS18B20_sensor *sensor);
 
-
+/**
+ * reads temperature of given sensor, tremperature is saved into sensor struct
+ * this function does not wait for the temperature conversion of the sensor 
+ * if conversionis not finished yet, data may be corrupted
+ * 
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ * 
+ * */
 void ds18b20_get_temp_manual(DS18B20_sensor *sensor);
-//misc functions
 
-//converts temprature in readable format
+/**
+ * starts a temperature conversion on given sensor
+ * after conversion is finsihed, data can be read from the sensor (ds18b20_get_temp_manual function)
+ * takes 94 - 750ms! depending on resolution
+ * @param: pointer to sensor struct! (member for sensor array in device struct)
+ * 
+ * */
+void ds18b20_start_temp_conv(DS18B20_sensor *sensor);
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// MISC FUNCTION
+
+/**
+ * INTERNAL: Converts the raw data into a readable format
+ * 
+ * @param: raw read data
+ * 
+ * @return: int16_t conversed temeprature
+ * 
+ * */
 int16_t _conv_temp(uint8_t *raw);
 
-void ds18b20_start_temp_conv(DS18B20_sensor *sensor);
+/**
+ * INTERNAL: delay for conversion
+ * is calculated on compile time!
+ * 
+ * */
 void _wait_conv_delay();
 
-void _read_scratchpad(DS18B20_sensor *sensor);
 
-//performst ROM search. 
-//returns number of found devices and saves rom codes in global rom_code array
-uint8_t ds18b20_search_sensors(DS18B20_dev *dev);
+
 
 
 
