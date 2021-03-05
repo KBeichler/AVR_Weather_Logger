@@ -235,7 +235,7 @@ void ds18b20_get_temp( DS18B20_sensor *sensor){
         byte[i] = ds18b20_read_byte();        
     }
 
-    sensor.temperature = _conv_temp(byte);
+    sensor->temperature = _conv_temp(byte);
 
 }
 

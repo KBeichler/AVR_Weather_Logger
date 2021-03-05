@@ -163,7 +163,7 @@ void _match_rom(DS18B20_sensor *sensor);
  * @param: pointer to sensor struct! (member for sensor array in device struct)
  *
  *  */
-void _read_scratchpad(DS18B20_sensor *sensor)
+void _read_scratchpad(DS18B20_sensor *sensor);
 
 
 

@@ -401,6 +401,21 @@ void nrf_store_registers(NRF24_dev *dev){
 
 }
 
+uint8_t nrf_fifo_empty(eRADIO_MODE mode){
+    uint8_t fifo_status;
+    nrf_read_register(FIFO_STATUS, &fifo_status);
+
+    uint8_t checkbit = (mode==TX) ? TX_EMPTY : RX_EMPTY;
+    //return 0 if fifo empty -> all data sent
+    if ( (fifo_status & ( 1<< checkbit )) ){
+        return 0;
+    }
+    else{
+        return 1;
+    }
+
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////////////

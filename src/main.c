@@ -1,3 +1,7 @@
+#ifndef F_CPU
+#define F_CPU 8000000
+#endif
+
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
@@ -21,7 +25,8 @@
 #include <logger.h>
 #endif
 
-const char version[] = "a_0.1";
+
+const char version[] = "a_0.2";
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -178,7 +183,7 @@ int main(void)
 
 
     #ifdef DEBUG
-    logger_init(9600);
+    logger_init(1200);
     printf_P(PSTR("********************\nWEATHER STATION STARTUP V: %s\n"), version);
     nrf_print_debug(&nrf);
     #endif
@@ -253,6 +258,12 @@ int main(void)
 
         
         nrf_status = nrf_write_payload(&nrf, (uint8_t*) &data_struct, sizeof(data_struct));
+
+        station_start_timer();
+        while( nrf_fifo_empty(TX) || milliseconds < 5)
+        {   };
+        station_stop_timer();
+
         nrf_power_mode(&nrf, POWER_DOWN);
 
                 

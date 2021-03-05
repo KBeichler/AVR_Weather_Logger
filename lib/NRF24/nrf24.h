@@ -288,6 +288,14 @@ void nrf_reset_irq(uint8_t status, eERROR irq);
  * */
 void nrf_store_registers(NRF24_dev *dev); 
 
+/*
+ * Checks if the TX or RX FIFO is empty
+ * @param mode: TX or RX
+ * 
+ * @return: 0 if empty, 1 if data in fifo
+ * */
+uint8_t nrf_fifo_empty(eRADIO_MODE mode);
+
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 // CONFIG FUNCTIONS
