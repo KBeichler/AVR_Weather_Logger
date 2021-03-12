@@ -130,7 +130,7 @@ eERROR nrf_read_payload(NRF24_dev *dev, uint8_t *data, uint8_t len){
 
 
 eERROR nrf_write_payload(NRF24_dev *dev, uint8_t *data, uint8_t len){
-
+    
     spi_beginTrx();
     // setup blanks to fill TX fifo (max payload length - payload)
     uint8_t blanks = dev->tx_payload_length - len;
@@ -165,7 +165,7 @@ eERROR nrf_write_payload(NRF24_dev *dev, uint8_t *data, uint8_t len){
 
 
 eERROR nrf_write_payload_noack(NRF24_dev *dev, uint8_t *data, uint8_t len){
-
+    
     spi_beginTrx();
     uint8_t blanks = dev->tx_payload_length - len;
     spi_trade_byte(W_TX_PAYLOAD_NO_ACK);
@@ -180,6 +180,7 @@ eERROR nrf_write_payload_noack(NRF24_dev *dev, uint8_t *data, uint8_t len){
     }
     // we dont check the interrupt here because we do not except an ACK
     spi_endTrx();
+
 
     return NO_ERROR;
 }
@@ -255,7 +256,7 @@ void nrf_open_writing_channel(NRF24_dev *dev, uint8_t *address, uint8_t tx_pload
     spi_endTrx();
 
     // for autoACK the RX pipe0 needs to be the same as tx Pipe!
-    nrf_open_reading_channel(dev, address, 0, tx_pload_length);
+    nrf_open_reading_channel(dev, address, tx_pload_length, 0);
 
 
 }
@@ -462,7 +463,7 @@ void nrf_print_debug(NRF24_dev *dev){
     printf_P(PSTR("CONFIG = 0x%02X\n"),dev->registers[CONFIG]);
     printf_P(PSTR("EN_AA = 0x%02X\n"), dev->registers[EN_AA]);
     printf_P(PSTR("EN_RX_ADDR = 0x%02X\n"), dev->registers[EN_RXADDR]);
-    printf_P(PSTR("ADDR_WIDTH = 0x%02X\t\t01 - 3b | 10 - 4b | 11 - 5b\n"),  dev->registers[SETUP_AW]);
+    printf_P(PSTR("ADDR_WIDTH = 0x%02X\t\t01 - 3b | 02 - 4b | 03 - 5b\n"),  dev->registers[SETUP_AW]);
     printf_P(PSTR("RF_CHANNEL = 0x%02X\n"), dev->registers[RF_CH]);
     printf_P(PSTR("RF_SETUP = 0x%02X\n"), dev->registers[RF_SETUP]);
     printf_P(PSTR("FEATURE = 0x%02X\n"), dev->registers[FEATURE]);

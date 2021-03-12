@@ -117,6 +117,7 @@ int main(void)
 //////////////////////////////////////////////////////////////////////////////*/
 // Status Variables
   uint8_t nrf_status = 0;
+  
 
 
 // AVR TIMER AND WATCHDOG
@@ -139,7 +140,7 @@ int main(void)
     // timer not final
     // 0x60 = 4 seconds, 0x61 = 8 seconds
     WDTCSR = 0x60; //0x61
-    sei();
+    
 
 // Set Sleep mode
     set_sleep_mode(SLEEP_MODE_STANDBY);
@@ -164,7 +165,8 @@ int main(void)
     data_struct.adc_count = ADC_COUNT;
     data_struct.ds18b20_count = ds18b20.sensor_count;
 
-    nrf_init(&nrf);    
+    nrf_init(&nrf);  
+     
     nrf_open_reading_channel(&nrf, rx_address, 32, 1);
     nrf_open_writing_channel(&nrf, tx_address, 32);
     nrf_radio_mode(&nrf, RX);
@@ -172,7 +174,7 @@ int main(void)
     nrf_radio_mode(&nrf, TX);
     nrf_flush_tx();
     // OPTIONAL SETTINGS - SET IF NEEDED
-//  nrf_set_channel(uint8_t channel);
+    nrf_set_channel(0x00);
 //  nrf_set_datarate(uint8_t datarate);
 //  nrf_set_rf_power(uint8_t rf_power);
 //  nrf_set_lna_gain(uint8_t lna_gain);
@@ -188,7 +190,8 @@ int main(void)
     nrf_print_debug(&nrf);
     #endif
 
-    _delay_ms(100);
+    
+    sei();
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,6 +202,7 @@ int main(void)
 //          |____/ \___/|_|   |_____|_| \_\_____\___/ \___/|_|               //
 //                                                                           //
 ///////////////////////////////////////////////////////////////////////////////
+
 
     while (1)
     {
@@ -216,6 +220,7 @@ int main(void)
           // start all conversions
           station_start_measurement();
           
+          
         }
         if (wdt_counter <= SLEEP_TIME) {
           sleep_mode();
@@ -230,8 +235,11 @@ int main(void)
         #ifdef DEBUG
         printf("BEGIN SEND ROUTINE\n");
         #endif
+        nrf_power_mode(&nrf, STANDBY);
         station_adc_on();
-        nrf_power_mode(&nrf, ACTIVE);
+
+        
+        
 
         
         bme280_get_data(&bme280);
@@ -258,11 +266,25 @@ int main(void)
 
         
         nrf_status = nrf_write_payload(&nrf, (uint8_t*) &data_struct, sizeof(data_struct));
+        nrf_power_mode(&nrf, ACTIVE);
 
+
+        
         station_start_timer();
-        while( nrf_fifo_empty(TX) || milliseconds < 5)
-        {   };
+        uint8_t delay = milliseconds;
+        while( nrf_fifo_empty(TX) && milliseconds < 5)
+        {
+          while (milliseconds == delay){};
+          delay = milliseconds;
+         };
+        
         station_stop_timer();
+
+        if (milliseconds >= 5){
+          nrf_flush_tx();
+          nrf_status = MAXIMUM_RT_IRQ;
+        }
+
 
         nrf_power_mode(&nrf, POWER_DOWN);
 
@@ -276,12 +298,20 @@ int main(void)
           printf("DS18B20 Sensor Nr %d Data: %d \n", i, data_struct.ds18b20_data[i] /*ds18b20.sensor[i].temperature */ );          
         }
         printf("ADC READINGS:");
+
+
         for (uint8_t i = 0; i < ADC_COUNT; i++){
           printf("  %d : %04d", i, data_struct.adc_data[i]);
         }
         printf("\nBH1750 DATA: %d\n", data_struct.bh1750_data);
-        printf("\nNRF Send was: %s - CODE %02X\n", nrf_status ? "NOK" : "OK", nrf_status);
-        printf("NRF: %d DataBytes Transmitted\n\n", sizeof(data_struct));
+        printf("\nNRF Send was: %s - CODE %02X Time: %02ld msec\n", (nrf_status)  ? "NOK" : "OK", nrf_status, milliseconds);
+        printf("\nHEX DATA: ");
+        uint8_t *ptr = &data_struct;
+        for (uint8_t i = 0; i < sizeof(data_struct); i++){
+          printf("%02X ", *ptr);
+          ptr++;
+        }
+        printf("\nNRF: %d DataBytes %sTransmitted\n\n", sizeof(data_struct), (nrf_status)  ? "not " : "" );
         #endif
 
         
