@@ -20,15 +20,11 @@ void veml6070_init(uint8_t sensitivity){
     if (sensitivity > 4){
         sensitivity = 3;
     }
-    uint8_t ara;
-
-    ara = read_ara();
-
-
     
-    printf("ara? %d\n", ara);
-    reg = (sensitivity << IT_BIT);
+    //reset IRQ
+    read_ara();
 
+    reg = (sensitivity << IT_BIT);
     write_byte(reg);
 
 }
@@ -105,10 +101,8 @@ static void write_byte(uint8_t data){
 
 static uint8_t read_ara(){
     i2c_start();
-    printf("ara i2c status %0x\n", i2c_status());
 
-    i2c_write(READ_ARA_ADDR  | 1);
-    
+    i2c_write(READ_ARA_ADDR  | 1);   
 
     i2c_stop();
     i2c_close();

@@ -2,6 +2,7 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <stdio.h>
+#include <uart.h>
 
 
 static int uart_put_stream(char , FILE *);

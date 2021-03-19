@@ -19,6 +19,7 @@
 #include <ds18b20.h>
 #include <bme280.h>
 #include <nrf24.h>
+#include <veml6070.h>
 
 #ifdef DEBUG
 #include <stdio.h>
@@ -162,8 +163,8 @@ int main(void)
     ds18b20_init(&ds18b20);
     bme280_init(&bme280);
 
-    data_struct.adc_count = ADC_COUNT;
-    data_struct.ds18b20_count = ds18b20.sensor_count;
+    //data_struct.adc_count = ADC_COUNT;
+    //data_struct.ds18b20_count = ds18b20.sensor_count;
 
     nrf_init(&nrf);  
      
@@ -182,7 +183,8 @@ int main(void)
     nrf_power_mode(&nrf, POWER_DOWN);
 
 
-
+    veml6070_init(3);
+    veml6070_power(OFF);
 
     #ifdef DEBUG
     logger_init(1200);
@@ -219,6 +221,7 @@ int main(void)
         if (wdt_counter == (SLEEP_TIME -1)) {
           // start all conversions
           station_start_measurement();
+          veml6070_power(ON);
           
           
         }
@@ -241,7 +244,7 @@ int main(void)
         
         
 
-        
+        data_struct.uv_idx = veml6070_read_uv();
         bme280_get_data(&bme280);
         data_struct.bme_temp  = bme280.temperature;
         data_struct.bme_press = bme280.pressure;
@@ -262,6 +265,7 @@ int main(void)
           data_struct.adc_data[i] = adc_read(i);
         }
         station_adc_off();
+        veml6070_power(OFF);
 
 
         
@@ -306,11 +310,13 @@ int main(void)
         printf("\nBH1750 DATA: %d\n", data_struct.bh1750_data);
         printf("\nNRF Send was: %s - CODE %02X Time: %02ld msec\n", (nrf_status)  ? "NOK" : "OK", nrf_status, milliseconds);
         printf("\nHEX DATA: ");
+
         uint8_t *ptr = &data_struct;
         for (uint8_t i = 0; i < sizeof(data_struct); i++){
           printf("%02X ", *ptr);
           ptr++;
         }
+
         printf("\nNRF: %d DataBytes %sTransmitted\n\n", sizeof(data_struct), (nrf_status)  ? "not " : "" );
         #endif
 
