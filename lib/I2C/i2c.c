@@ -29,7 +29,9 @@ void i2c_close(void){
 }
 
 static void _wait_for_trx(void){
-    while (!(TWCR &(_BV(TWINT))));
+    
+    uint16_t c = 0;
+    while ( !(TWCR &(_BV(TWINT))) && c++ < TIMEOUT);
 }
 
 
@@ -45,6 +47,14 @@ void i2c_stop(void){
     //wait for STOP to finish
     while ( !(TWCR & (1 << TWSTO)));
     
+}
+
+void i2c_restart(void){
+    TWCR &= ~(_BV(TWEN));
+
+    uint8_t n = 10;
+    while (n--);
+    TWCR |= _BV(TWEN) | _BV(TWINT);
 }
 
 void i2c_write(uint8_t data){

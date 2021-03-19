@@ -34,6 +34,8 @@ void veml6070_power(VEML_POWER);
 
 
 uint16_t veml6070_read_uv(void);
+
+uint8_t veml_reset_irq();
 /*
 off 
 

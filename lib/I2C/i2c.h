@@ -5,6 +5,8 @@
 #define I2C_SPEED 100000  /* 100000 or 400000 */
 #endif
 
+#define TIMEOUT     2500
+
 
 
 #define I2C_BIT_RATE (F_CPU/(I2C_SPEED*2) - 8)
@@ -16,6 +18,8 @@
 uint8_t i2c_init(void);
 
 void i2c_close(void);
+
+void i2c_restart(void);
 
 
 void i2c_start(void);

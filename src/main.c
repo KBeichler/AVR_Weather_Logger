@@ -91,6 +91,9 @@ void station_start_measurement(){
   bme280_force_meas(&bme280);
 
   bh1750_toggle_oneread_h();
+  veml6070_power(ON);
+  i2c_restart();
+  
 
   for (uint8_t i = 0; i < ds18b20.sensor_count; i++){
     ds18b20_start_temp_conv(&ds18b20.sensor[i]);
@@ -116,6 +119,10 @@ int main(void)
 //           |___|_| |_|_|\__|_|\__,_|_|_|___/\__,_|\__|_|\___/|_| |_|        //
 //                                                                            //
 //////////////////////////////////////////////////////////////////////////////*/
+    #ifdef DEBUG
+    logger_init(1200);
+    printf_P(PSTR("********************\nWEATHER STATION STARTUP V: %s\n"), version);
+    #endif
 // Status Variables
   uint8_t nrf_status = 0;
   
@@ -160,6 +167,8 @@ int main(void)
     station_adc_off();
 
 // Setup devices and librarys
+// include short delay
+
     ds18b20_init(&ds18b20);
     bme280_init(&bme280);
 
@@ -187,9 +196,9 @@ int main(void)
     veml6070_power(OFF);
 
     #ifdef DEBUG
-    logger_init(1200);
-    printf_P(PSTR("********************\nWEATHER STATION STARTUP V: %s\n"), version);
+    
     nrf_print_debug(&nrf);
+    printf_P(PSTR("\nINITIALISATION FINISHED - STARTING MAINLOOP\n********************\n"));
     #endif
 
     
@@ -221,7 +230,7 @@ int main(void)
         if (wdt_counter == (SLEEP_TIME -1)) {
           // start all conversions
           station_start_measurement();
-          veml6070_power(ON);
+          
           
           
         }
@@ -244,18 +253,21 @@ int main(void)
         
         
 
-        data_struct.uv_idx = veml6070_read_uv();
+        
         bme280_get_data(&bme280);
         data_struct.bme_temp  = bme280.temperature;
         data_struct.bme_press = bme280.pressure;
         data_struct.bme_hum   = bme280.humidity;
 
-        data_struct.bh1750_data = bh1750_oneread_h_no_delay();        
+        data_struct.bh1750_data = bh1750_oneread_h_no_delay();       
+
+        
         
         for(uint8_t i = 0; i < ds18b20.sensor_count; i++){
           ds18b20_get_temp_manual(&ds18b20.sensor[i]);
           data_struct.ds18b20_data[i] = ds18b20.sensor[i].temperature;
         }
+        data_struct.uv_idx = veml6070_read_uv(); 
 
 
         
@@ -292,6 +304,7 @@ int main(void)
 
         nrf_power_mode(&nrf, POWER_DOWN);
 
+        
                 
 
 
@@ -307,7 +320,8 @@ int main(void)
         for (uint8_t i = 0; i < ADC_COUNT; i++){
           printf("  %d : %04d", i, data_struct.adc_data[i]);
         }
-        printf("\nBH1750 DATA: %d\n", data_struct.bh1750_data);
+        printf("\nBH1750 DATA: %d   - UV DATA: %d\n", data_struct.bh1750_data, data_struct.uv_idx);
+        
         printf("\nNRF Send was: %s - CODE %02X Time: %02ld msec\n", (nrf_status)  ? "NOK" : "OK", nrf_status, milliseconds);
         printf("\nHEX DATA: ");
 
