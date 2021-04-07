@@ -1,10 +1,10 @@
 #ifndef STATION
 #define STATION
 
-#define DEBUG
+//#define DEBUG
 
 
-#define SLEEP_TIME      2
+#define SLEEP_TIME      37
 #define ADC_COUNT       4
 #define DS18B20_COUNT   4
 

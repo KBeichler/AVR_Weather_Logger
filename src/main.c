@@ -27,7 +27,7 @@
 #endif
 
 
-const char version[] = "a_0.2";
+const char version[] = "b_1.0";
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ uint8_t rx_address[] = "xxxx2";
 // COUNTER VARIABLES FOR INTERRUPTS
 volatile uint32_t milliseconds = 0;
 volatile uint32_t wdt_counter = 0;
-
+volatile uint32_t wdt_active = 0;
 
 
 
@@ -101,6 +101,25 @@ void station_start_measurement(){
 
 }
 
+void wdt_setup(uint8_t mode);
+
+void wdt_setup(uint8_t mode){
+//Setup the watchdog 
+    cli();
+    MCUSR &= ~(_BV(WDRF));
+    WDTCSR |= (1 << WDCE) | (1 << WDE);
+    
+    // 0 = Interrupt but no reset
+    if (mode == 0){
+      WDTCSR = _BV(WDIE) | _BV(WDP3) | _BV(WDP0) ; //0x61
+    }
+    // 1 = Interrupt and reset!
+    else if (mode == 1){
+      WDTCSR = _BV(WDE) | _BV(WDIE) | _BV(WDP3) | _BV(WDP0) ; 
+    }
+    
+    sei();
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -142,12 +161,7 @@ int main(void)
 
 
 //Setup the watchdog - Interrupt but no reset
-    cli();
-    MCUSR &= ~(_BV(WDRF));
-    WDTCSR |= (1 << WDCE) | (1 << WDE);
-    // timer not final
-    // 0x60 = 4 seconds, 0x61 = 8 seconds
-    WDTCSR = 0x60; //0x61
+    wdt_setup(0);
     
 
 // Set Sleep mode
@@ -239,6 +253,8 @@ int main(void)
           continue;
         }
 
+        
+
 
 // MEASUREMENT AND SEND ROUTINE
 // gets executed when the wdt_counter is bigger than SLEEP_TIME
@@ -247,6 +263,7 @@ int main(void)
         #ifdef DEBUG
         printf("BEGIN SEND ROUTINE\n");
         #endif
+        wdt_setup(1);
         nrf_power_mode(&nrf, STANDBY);
         station_adc_on();
 
@@ -340,7 +357,7 @@ int main(void)
 
         
         //_delay_ms(2500);
-
+        wdt_setup(0);
         wdt_counter = 0;  
     }
 
@@ -375,6 +392,9 @@ ISR (TIMER0_COMPA_vect){
 
 ISR(WDT_vect){
   wdt_counter++;
+  if (wdt_active != 0){
+
+  }
 }
 
 ISR(__vector_default){};
